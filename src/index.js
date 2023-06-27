@@ -1,12 +1,16 @@
 import express from "express";
 import ProductRouter from "./router/product.routes.js";
 import CartRouter from "./router/carts.routes.js";
-import { engine } from "express-handlebars";
 import * as path from "path";
 import __dirname from "./utils.js";
 import ProductManager from "./controllers/ProductManager.js";
+import { engine } from "express-handlebars";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server);
 const PORT = 8080;
 const product = new ProductManager();
 
@@ -22,21 +26,39 @@ app.set("views", path.resolve(__dirname + "/views"))
 
 app.use("/", express.static(__dirname + "/public"))
 
-app.get("/:id", async (req, res) => {
-    let prod = await product.getProductsById(req.params.id)
-    res.render("prod", {
-        title: "Express Avanzado | Handlebars",
-        products : prod
+app.get("/", async (req, res) => {
+    let allProducts = await product.getProducts();
+    res.render("home", {
+        title: "Express Avanzado",
+        products: allProducts,
+    });
+});
 
-    })
-})
+app.get("/realtimeproducts", async (req, res) => {
+    let allProducts = await product.getProducts();
+    res.render("realTimeProducts", {
+        title: "Real Time Products",
+        products: allProducts,
+    });
+});
+
+io.on("connection", (socket) => {
+    console.log("Nuevo cliente conectado");
+
+    // Evento para agregar un nuevo producto
+    socket.on("newProduct", async (productData) => {
+        await product.createProduct(productData);
+        const allProducts = await product.getProducts();
+        io.emit("updateProducts", allProducts);
+    });
+});
 
 app.use("/api/products", ProductRouter);
 app.use("/api/cart", CartRouter);
 
 
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Servidor ${PORT} Arriba`);
 });
 
