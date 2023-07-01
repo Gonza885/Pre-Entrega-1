@@ -47,7 +47,7 @@ io.on("connection", (socket) => {
 
     // Evento para agregar un nuevo producto
     socket.on("newProduct", async (productData) => {
-        await product.createProduct(productData);
+        await product.addProducts(productData);
         const allProducts = await product.getProducts();
         io.emit("updateProducts", allProducts);
     });
